@@ -20,15 +20,48 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
             self.y = torch.load(os.path.join(data_dir, f"{split}_y.pt"))
             assert len(torch.unique(self.y)) == self.num_classes, "Number of classes do not match."
 
-        """
-        #追加：スケーリング(標準化)  平均0、分散1に各時系列データ（self.X の各チャネルごと）に処理
-        # トレーニングデータでStandardScalerをfitし、同じものをvalid、testでも利用。時系列データの最後の次元に沿ってスケーリングを行う
-        self.scaler = StandardScaler()
-        if split == "train":
-            self.X = self.scaler.fit_transform(self.X.reshape(-1, self.X.shape[-1])).reshape(self.X.shape)
-        else:
-            self.X = self.scaler.transform(self.X.reshape(-1, self.X.shape[-1])).reshape(self.X.shape)
-        """
+
+        # 前処理追加
+        self.X = self.preprocess(self.X)
+
+
+    #前処理のクラス定義
+    def preprocess(self, X: torch.Tensor) -> torch.Tensor:
+        # データをNumpy配列に変換
+        X_np = X.numpy()
+        
+        # ベースライン補正
+        baseline = X_np[:, :, :50].mean(axis=2, keepdims=True)  # 最初の50サンプルをベースラインと仮定
+        X_np = X_np - baseline
+        
+        # フィルタリング（簡易的に高周波ノイズを除去）
+        from scipy.signal import butter, lfilter
+        
+        def butter_lowpass(cutoff, fs, order=5):
+            nyquist = 0.5 * fs
+            normal_cutoff = cutoff / nyquist
+            b, a = butter(order, normal_cutoff, btype='low', analog=False)
+            return b, a
+        
+        def lowpass_filter(data, cutoff=40.0, fs=250.0, order=5):
+            b, a = butter_lowpass(cutoff, fs, order=order)
+            y = lfilter(b, a, data)
+            return y
+        
+        # フィルタリングをチャンネル毎に適用
+        for i in range(X_np.shape[1]):
+            X_np[:, i, :] = lowpass_filter(X_np[:, i, :])
+        
+        # スケーリング（標準化）
+        scaler = StandardScaler()
+        X_np = scaler.fit_transform(X_np.reshape(-1, X_np.shape[2])).reshape(X_np.shape)
+        
+        # Tensorに戻す
+        X = torch.tensor(X_np, dtype=X.dtype)
+        
+        return X
+
+    ###以上、追加
 
 
     def __len__(self) -> int:
