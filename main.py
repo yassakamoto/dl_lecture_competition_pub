@@ -10,7 +10,8 @@ from termcolor import cprint
 from tqdm import tqdm
 
 from src.datasets import ThingsMEGDataset
-from src.models import BasicConvClassifier
+#from src.models import BasicConvClassifier  #モデル変更
+from src.models import AttentionConvClassifier #追加
 from src.utils import set_seed
 
 
@@ -39,9 +40,17 @@ def run(args: DictConfig):
     # ------------------
     #       Model
     # ------------------
+    """
     model = BasicConvClassifier(
         train_set.num_classes, train_set.seq_len, train_set.num_channels
     ).to(args.device)
+    """
+
+    ##Attentionモデル追加
+    model = AttentionConvClassifier(
+        train_set.num_classes, train_set.seq_len, train_set.num_channels
+    ).to(args.device)
+
 
     # ------------------
     #     Optimizer
