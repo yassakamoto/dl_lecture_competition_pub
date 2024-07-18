@@ -25,7 +25,7 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
         self.X = self.preprocess(self.X)
 
 
-    #前処理のクラス定義
+    #前処理を定義
     def preprocess(self, X: torch.Tensor) -> torch.Tensor:
         # データをNumpy配列に変換
         X_np = X.numpy()
